@@ -8,6 +8,7 @@ import (
 
 type Message struct {
 	from    string
+	username string
 	payload []byte
 }
 
@@ -46,7 +47,7 @@ func (s *Server) AcceptLoop() {
 			fmt.Println("accept error :", err)
 			continue
 		}
-		fmt.Println("new connection to the server", conn.RemoteAddr())
+		//fmt.Println("new connection to the server", conn.RemoteAddr())
 		go s.ReadLoop(conn)
 	}
 }
@@ -54,6 +55,15 @@ func (s *Server) AcceptLoop() {
 func (s *Server) ReadLoop(conn net.Conn) {
 	defer conn.Close()
 	buf := make([]byte, 2048)
+	//for user
+	n,err:=conn.Read(buf)
+	if err!=nil{
+		fmt.Println("read error:", err)
+		return
+	}
+	usr:=string(buf[:n])
+	fmt.Printf("User %s has connected",usr)
+	//for msg
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -62,9 +72,10 @@ func (s *Server) ReadLoop(conn net.Conn) {
 		}
 		s.msgch <- Message{
 			from:    conn.RemoteAddr().String(),
+			username: usr,
 			payload: buf[:n],
 		}
-		conn.Write([]byte("thank for your messag!"))
+		conn.Write([]byte("thank for your messag!\n"))
 	}
 }
 
@@ -72,7 +83,7 @@ func main() {
 	server := NewServer(":3000")
 	go func() {
 		for msg := range server.msgch {
-			fmt.Printf("received message from connection (%s):%s\n", msg.from, string(msg.payload))
+			fmt.Printf("received message from connection (%s):%s\n", msg.username, string(msg.payload))
 		}
 	}()
 	log.Fatal(server.Start())
